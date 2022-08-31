@@ -1,11 +1,7 @@
 import { faker } from "@faker-js/faker";
 import { findByApiKey } from "../repositories/companyRepository.js";
 import { findById } from "../repositories/employeeRepository.js";
-import {
-	findByTypeAndEmployeeId,
-	TransactionTypes,
-	insert,
-} from "../repositories/cardRepository.js";
+import * as cardRepository from "../repositories/cardRepository.js";
 import Cryptr from "cryptr";
 import dotenv from "dotenv";
 
@@ -13,11 +9,10 @@ dotenv.config();
 
 export async function newCard(
 	apiKey: string,
-	type: TransactionTypes,
+	type: cardRepository.TransactionTypes,
 	employeeId: number
 ) {
 	const cryptr = new Cryptr(process.env.SECRET);
-
 	const isKeyValid = await findByApiKey(apiKey);
 
 	if (!isKeyValid) throw { code: "Anauthorized", message: "Api key inválida." };
@@ -27,7 +22,10 @@ export async function newCard(
 	if (!isEmployeeRegistred)
 		throw { code: "NotFound", message: "Empregado não encontrado" };
 
-	const cardsOfEmployee = await findByTypeAndEmployeeId(type, employeeId);
+	const cardsOfEmployee = await cardRepository.findByTypeAndEmployeeId(
+		type,
+		employeeId
+	);
 
 	if (cardsOfEmployee)
 		throw {
@@ -36,14 +34,11 @@ export async function newCard(
 		};
 
 	const cardholderName = await cardName(isEmployeeRegistred.fullName);
-
 	const expirationDate = await expireDate();
-
 	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
-
 	const number = faker.finance.creditCardNumber();
 
-	await insert({
+	await cardRepository.insert({
 		employeeId,
 		number,
 		cardholderName,
@@ -78,4 +73,45 @@ async function expireDate() {
 	const month = expireDate.getMonth();
 
 	return `${month}/${year.slice(-2)}`;
+}
+
+export async function activateCard(
+	id: number,
+	newPassword: string,
+	code: string
+) {
+	const cryptr = new Cryptr(process.env.SECRET);
+	const card = await cardRepository.findById(id);
+
+	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+
+	if (checkExpirationDate(card.expirationDate))
+		throw { code: "BadRequest", message: "Cartão vencido." };
+
+	if (card.password)
+		throw { code: "BadRequest", message: "Cartão já foi ativado." };
+
+	const cvc = cryptr.decrypt(card.securityCode);
+
+	if (cvc !== code) throw { code: "Anauthorized", message: "CVC incorreto." };
+
+	if (newPassword.length !== 4)
+		throw { code: "WrongType", message: "A senha deve conter 4 digitos." };
+
+	const password = cryptr.encrypt(newPassword);
+
+	await cardRepository.update(id, { password });
+}
+
+function checkExpirationDate(expirationDate: string) {
+	const date = new Date();
+	const year = String(date.getFullYear());
+	const month = date.getMonth();
+	const actualDate = `${month}/${year.slice(-2)}`;
+
+	if (actualDate > expirationDate) {
+		return true;
+	} else {
+		return false;
+	}
 }
