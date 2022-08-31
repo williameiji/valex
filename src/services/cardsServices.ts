@@ -2,6 +2,8 @@ import { faker } from "@faker-js/faker";
 import { findByApiKey } from "../repositories/companyRepository.js";
 import { findById } from "../repositories/employeeRepository.js";
 import * as cardRepository from "../repositories/cardRepository.js";
+import * as rechargeRepository from "../repositories/rechargeRepository.js";
+import * as paymentRepository from "../repositories/paymentRepository.js";
 import Cryptr from "cryptr";
 import dotenv from "dotenv";
 
@@ -140,4 +142,32 @@ export async function sendCards(id: number, passwords: string[]) {
 	});
 
 	return { cards: sendInformations };
+}
+
+export async function sendBalance(id: number) {
+	const card = await cardRepository.findById(id);
+
+	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+
+	const transactions = await paymentRepository.findByCardId(id);
+
+	let totalTransactions: number;
+
+	for await (const balance of transactions) {
+		totalTransactions += balance.amount;
+	}
+
+	const recharges = await rechargeRepository.findByCardId(id);
+
+	let totalRecharges: number;
+
+	for await (const balance of recharges) {
+		totalRecharges += balance.amount;
+	}
+
+	return {
+		balance: totalRecharges - totalTransactions,
+		transactions,
+		recharges,
+	};
 }
