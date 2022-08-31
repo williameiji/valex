@@ -25,8 +25,11 @@ export interface Card {
 export type CardInsertData = Omit<Card, "id">;
 export type CardUpdateData = Partial<Card>;
 
-export async function find() {
-	const result = await connection.query<Card>("SELECT * FROM cards");
+export async function findByEmploeeId(employeeId: number) {
+	const result = await connection.query<Card>(
+		`SELECT * FROM cards WHERE "employeeId" = $1 AND password IS NOT NULL`,
+		[employeeId]
+	);
 	return result.rows;
 }
 

@@ -18,3 +18,12 @@ export async function activateCard(req: Request, res: Response) {
 
 	res.sendStatus(202);
 }
+
+export async function sendCards(req: Request, res: Response) {
+	const { id } = req.params;
+	const { passwords } = req.body;
+
+	const cards = await cardService.sendCards(Number(id), passwords);
+
+	res.status(200).send(cards);
+}

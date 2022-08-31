@@ -36,7 +36,7 @@ export async function newCard(
 	const cardholderName = await cardName(isEmployeeRegistred.fullName);
 	const expirationDate = await expireDate();
 	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
-	const number = faker.finance.creditCardNumber();
+	const number = faker.finance.creditCardNumber("63[7-9]#-####-####-###L");
 
 	await cardRepository.insert({
 		employeeId,
@@ -114,4 +114,30 @@ function checkExpirationDate(expirationDate: string) {
 	} else {
 		return false;
 	}
+}
+
+export async function sendCards(id: number, passwords: string[]) {
+	const cryptr = new Cryptr(process.env.SECRET);
+	const cards = await cardRepository.findByEmploeeId(id);
+
+	if (!cards.length) return {};
+
+	const sendInformations = cards.map((elem, index) => {
+		const decodedPassword = cryptr.decrypt(elem.password);
+
+		if (passwords.some((elem) => elem == decodedPassword)) {
+			const numberWithoutDash = elem.number.split("-").join(" ");
+
+			return {
+				number: numberWithoutDash,
+				cardholderName: elem.cardholderName,
+				expirationDate: elem.expirationDate,
+				securityCode: cryptr.decrypt(elem.securityCode),
+			};
+		} else {
+			return "Senha/Cartão inválidos";
+		}
+	});
+
+	return { cards: sendInformations };
 }
