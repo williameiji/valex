@@ -47,7 +47,7 @@ export async function newCard(
 		securityCode,
 		expirationDate,
 		isVirtual: false,
-		isBlocked: true,
+		isBlocked: false,
 		type,
 	});
 }
@@ -88,7 +88,7 @@ export async function activateCard(
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
 	if (checkExpirationDate(card.expirationDate))
-		throw { code: "BadRequest", message: "Cartão vencido." };
+		throw { code: "BadRequest", message: "Cartão expirado." };
 
 	if (card.password)
 		throw { code: "BadRequest", message: "Cartão já foi ativado." };
@@ -106,12 +106,18 @@ export async function activateCard(
 }
 
 function checkExpirationDate(expirationDate: string) {
+	const cardDate = expirationDate.split("/");
 	const date = new Date();
-	const year = String(date.getFullYear());
+	const year = date.getFullYear();
 	const month = date.getMonth();
-	const actualDate = `${month}/${year.slice(-2)}`;
+	const actualDate = new Date(year, month);
 
-	if (actualDate > expirationDate) {
+	const expirationDateFromCard = new Date(
+		Number(`20${cardDate[1]}`),
+		Number(cardDate[0])
+	);
+
+	if (actualDate > expirationDateFromCard) {
 		return true;
 	} else {
 		return false;
@@ -170,4 +176,25 @@ export async function sendBalance(id: number) {
 		transactions,
 		recharges,
 	};
+}
+
+export async function blockCard(id: number, password: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const card = await cardRepository.findById(id);
+
+	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+
+	const decodedPassword = cryptr.decrypt(card.password);
+
+	if (decodedPassword !== password)
+		throw { code: "Anauthorized", message: "Senha incorreta." };
+
+	if (checkExpirationDate(card.expirationDate))
+		throw { code: "BadRequest", message: "Cartão expirado." };
+
+	if (card.isBlocked)
+		throw { code: "BadRequest", message: "Cartão já bloqueado." };
+
+	await cardRepository.update(id, { isBlocked: true });
 }

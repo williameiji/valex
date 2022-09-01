@@ -35,3 +35,11 @@ export async function sendBalance(req: Request, res: Response) {
 
 	res.status(200).send(balance);
 }
+
+export async function blockCard(req: Request, res: Response) {
+	const data = req.body;
+
+	await cardService.blockCard(Number(data.id), data.password);
+
+	res.sendStatus(200);
+}
