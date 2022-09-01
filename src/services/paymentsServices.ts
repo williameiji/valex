@@ -21,6 +21,12 @@ export async function cardPayments(
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
+	if (card.isVirtual)
+		throw {
+			code: "Anauthorized",
+			message: "Cartões virtuais não podem ser usados nesse pagemento!",
+		};
+
 	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo!" };
 
 	const decodedPassword = cryptr.decrypt(card.password);
@@ -79,6 +85,7 @@ export async function cardOnlinePayments(
 	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo!" };
 
 	const decodedCvc = cryptr.decrypt(card.securityCode);
+	console.log(decodedCvc);
 
 	if (decodedCvc !== cvc)
 		throw { code: "Anauthorized", message: "Dados incorretos" };
@@ -100,10 +107,24 @@ export async function cardOnlinePayments(
 			message: "O tipo de estabelecimento não é o mesmo do tipo do cartão!",
 		};
 
-	const { balance } = await sendBalance(card.id);
+	let totalBalance: number;
 
-	if (balance < value) {
+	if (card.isVirtual) {
+		const { balance } = await sendBalance(card.originalCardId);
+		totalBalance = balance;
+	} else {
+		const { balance } = await sendBalance(card.id);
+		totalBalance = balance;
+	}
+
+	if (totalBalance < value) {
 		throw { code: "BadRequest", message: "Saldo insuficiente!" };
+	} else if (card.isVirtual) {
+		await paymentRepository.insert({
+			cardId: card.originalCardId,
+			businessId: idBusiness,
+			amount: value,
+		});
 	} else {
 		await paymentRepository.insert({
 			cardId: card.id,

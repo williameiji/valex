@@ -83,12 +83,19 @@ export async function activateCard(
 	code: string
 ) {
 	const cryptr = new Cryptr(process.env.SECRET);
+
 	const card = await cardRepository.findById(id);
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
 	if (checkExpirationDate(card.expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
+
+	if (card.isVirtual)
+		throw {
+			code: "BadRequest",
+			message: "Cartões virtuais não podem ser ativados.",
+		};
 
 	if (card.password)
 		throw { code: "BadRequest", message: "Cartão já foi ativado." };

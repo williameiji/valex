@@ -10,6 +10,12 @@ export async function rechargeCard(id: number, value: number, apiKey: string) {
 
 	const card = await cardRepository.findById(id);
 
+	if (card.isVirtual)
+		throw {
+			code: "BadRequest",
+			message: "Cartões virtuais não podem ser recarregados!",
+		};
+
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
 	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo." };
