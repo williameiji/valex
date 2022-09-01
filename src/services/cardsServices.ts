@@ -198,3 +198,24 @@ export async function blockCard(id: number, password: string) {
 
 	await cardRepository.update(id, { isBlocked: true });
 }
+
+export async function unlockCard(id: number, password: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const card = await cardRepository.findById(id);
+
+	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+
+	const decodedPassword = cryptr.decrypt(card.password);
+
+	if (decodedPassword !== password)
+		throw { code: "Anauthorized", message: "Senha incorreta." };
+
+	if (checkExpirationDate(card.expirationDate))
+		throw { code: "BadRequest", message: "Cartão expirado." };
+
+	if (!card.isBlocked)
+		throw { code: "BadRequest", message: "Cartão já está desbloqueado." };
+
+	await cardRepository.update(id, { isBlocked: false });
+}
