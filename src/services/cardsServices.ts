@@ -157,7 +157,7 @@ export async function sendBalance(id: number) {
 
 	const transactions = await paymentRepository.findByCardId(id);
 
-	let totalTransactions: number;
+	let totalTransactions: number = 0;
 
 	for await (const balance of transactions) {
 		totalTransactions += balance.amount;
@@ -165,7 +165,7 @@ export async function sendBalance(id: number) {
 
 	const recharges = await rechargeRepository.findByCardId(id);
 
-	let totalRecharges: number;
+	let totalRecharges: number = 0;
 
 	for await (const balance of recharges) {
 		totalRecharges += balance.amount;
