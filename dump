@@ -1,0 +1,550 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 12.12 (Ubuntu 12.12-0ubuntu0.20.04.1)
+-- Dumped by pg_dump version 12.12 (Ubuntu 12.12-0ubuntu0.20.04.1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: transactionType; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public."transactionType" AS ENUM (
+    'groceries',
+    'restaurant',
+    'transport',
+    'education',
+    'health'
+);
+
+
+ALTER TYPE public."transactionType" OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: businesses; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.businesses (
+    id integer NOT NULL,
+    name text NOT NULL,
+    type public."transactionType" NOT NULL
+);
+
+
+ALTER TABLE public.businesses OWNER TO postgres;
+
+--
+-- Name: businesses_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.businesses_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.businesses_id_seq OWNER TO postgres;
+
+--
+-- Name: businesses_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.businesses_id_seq OWNED BY public.businesses.id;
+
+
+--
+-- Name: cards; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.cards (
+    id integer NOT NULL,
+    "employeeId" integer NOT NULL,
+    number text NOT NULL,
+    "cardholderName" text NOT NULL,
+    "securityCode" text NOT NULL,
+    "expirationDate" text NOT NULL,
+    password text,
+    "isVirtual" boolean NOT NULL,
+    "originalCardId" integer,
+    "isBlocked" boolean NOT NULL,
+    type public."transactionType" NOT NULL
+);
+
+
+ALTER TABLE public.cards OWNER TO postgres;
+
+--
+-- Name: cards_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.cards_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.cards_id_seq OWNER TO postgres;
+
+--
+-- Name: cards_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.cards_id_seq OWNED BY public.cards.id;
+
+
+--
+-- Name: companies; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.companies (
+    id integer NOT NULL,
+    name text NOT NULL,
+    "apiKey" text
+);
+
+
+ALTER TABLE public.companies OWNER TO postgres;
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.companies_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.companies_id_seq OWNER TO postgres;
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.companies_id_seq OWNED BY public.companies.id;
+
+
+--
+-- Name: employees; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.employees (
+    id integer NOT NULL,
+    "fullName" text NOT NULL,
+    cpf text NOT NULL,
+    email text NOT NULL,
+    "companyId" integer NOT NULL
+);
+
+
+ALTER TABLE public.employees OWNER TO postgres;
+
+--
+-- Name: employees_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.employees_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.employees_id_seq OWNER TO postgres;
+
+--
+-- Name: employees_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.employees_id_seq OWNED BY public.employees.id;
+
+
+--
+-- Name: payments; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payments (
+    id integer NOT NULL,
+    "cardId" integer NOT NULL,
+    "businessId" integer NOT NULL,
+    "timestamp" timestamp(0) without time zone DEFAULT now() NOT NULL,
+    amount integer NOT NULL
+);
+
+
+ALTER TABLE public.payments OWNER TO postgres;
+
+--
+-- Name: payments_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.payments_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.payments_id_seq OWNER TO postgres;
+
+--
+-- Name: payments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.payments_id_seq OWNED BY public.payments.id;
+
+
+--
+-- Name: recharges; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.recharges (
+    id integer NOT NULL,
+    "cardId" integer NOT NULL,
+    "timestamp" timestamp(0) without time zone DEFAULT now() NOT NULL,
+    amount integer NOT NULL
+);
+
+
+ALTER TABLE public.recharges OWNER TO postgres;
+
+--
+-- Name: recharges_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.recharges_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.recharges_id_seq OWNER TO postgres;
+
+--
+-- Name: recharges_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.recharges_id_seq OWNED BY public.recharges.id;
+
+
+--
+-- Name: businesses id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.businesses ALTER COLUMN id SET DEFAULT nextval('public.businesses_id_seq'::regclass);
+
+
+--
+-- Name: cards id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cards ALTER COLUMN id SET DEFAULT nextval('public.cards_id_seq'::regclass);
+
+
+--
+-- Name: companies id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.companies ALTER COLUMN id SET DEFAULT nextval('public.companies_id_seq'::regclass);
+
+
+--
+-- Name: employees id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees ALTER COLUMN id SET DEFAULT nextval('public.employees_id_seq'::regclass);
+
+
+--
+-- Name: payments id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments ALTER COLUMN id SET DEFAULT nextval('public.payments_id_seq'::regclass);
+
+
+--
+-- Name: recharges id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.recharges ALTER COLUMN id SET DEFAULT nextval('public.recharges_id_seq'::regclass);
+
+
+--
+-- Data for Name: businesses; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.businesses (id, name, type) FROM stdin;
+1	Responde Aí	education
+2	Extra	groceries
+3	Driven Eats	restaurant
+4	Uber	transport
+5	Unimed	health
+\.
+
+
+--
+-- Data for Name: cards; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.cards (id, "employeeId", number, "cardholderName", "securityCode", "expirationDate", password, "isVirtual", "originalCardId", "isBlocked", type) FROM stdin;
+4	1	6399-0079-1858-9566	FULANO R SILVA	fc5334c3821838c241f138539bf2592ca3f9f59f63cd96e327354fa1d3fb9c103099fcb80772fb4807855fe09a33443ce49f1a7d26b6ba1286570514e210e18b4270bd2f1043c3cde32f504e61584ce3aaa01c66602cc8eaac56a725f9d0abc19d479b	09/27	ce0671106c597749c50c1b9ce208c0f98603b8f4681eca3541dedc8795ea545224f52547c5ba24719e30dbb316891f144ef80d88b479be694db73740785101621ab3593403ca1b0186e9bf59eca1e67223d96a6180d3c20eac7b5aeea121f78e4b663076	f	\N	f	restaurant
+8	2	6392-6234-2919-1549	CICLANA M MADEIRA	571c381c4a29f00ce7e3f2268e912dff9cccb4637797153042469be5358946ef7b0c035afc54423ba289d82797623ed1485d74baa5f1e94bda0fe6b623b3734aeea8750c6bec1cc56f70ae423ed54032ba4378db5375184ff56902ebd50d30a2f4f458	09/27	489c8b46f131869dc691c491a37724b4616e579f59570bc8f0cb4c747da432e6cbfb71fd9ef7ba30182520eed50e21c61a13e76a98b47bd7f8128eb6cf3a780a479f0d736c64378475b0f771cde8b02e0577a62b95ebe94a641fc83258d4265209af90c7	f	\N	f	restaurant
+\.
+
+
+--
+-- Data for Name: companies; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.companies (id, name, "apiKey") FROM stdin;
+1	Driven	zadKLNx.DzvOVjQH01TumGl2urPjPQSxUbf67vs0
+\.
+
+
+--
+-- Data for Name: employees; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.employees (id, "fullName", cpf, email, "companyId") FROM stdin;
+1	Fulano Rubens da Silva	47100935741	fulano.silva@gmail.com	1
+2	Ciclana Maria Madeira	08434681895	ciclaninha@gmail.com	1
+\.
+
+
+--
+-- Data for Name: payments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.payments (id, "cardId", "businessId", "timestamp", amount) FROM stdin;
+8	4	3	2022-09-01 13:04:23	500
+9	8	3	2022-09-01 15:27:09	100
+10	8	3	2022-09-01 15:27:37	100
+11	8	3	2022-09-01 15:30:10	100
+12	8	3	2022-09-01 15:30:45	100
+13	8	3	2022-09-01 15:34:35	100
+\.
+
+
+--
+-- Data for Name: recharges; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.recharges (id, "cardId", "timestamp", amount) FROM stdin;
+4	4	2022-09-01 12:51:04	1000
+5	8	2022-09-01 15:26:23	2000
+\.
+
+
+--
+-- Name: businesses_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.businesses_id_seq', 1, false);
+
+
+--
+-- Name: cards_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.cards_id_seq', 9, true);
+
+
+--
+-- Name: companies_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.companies_id_seq', 1, false);
+
+
+--
+-- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.employees_id_seq', 1, false);
+
+
+--
+-- Name: payments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.payments_id_seq', 13, true);
+
+
+--
+-- Name: recharges_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.recharges_id_seq', 5, true);
+
+
+--
+-- Name: businesses businesses_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.businesses
+    ADD CONSTRAINT businesses_name_key UNIQUE (name);
+
+
+--
+-- Name: businesses businesses_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.businesses
+    ADD CONSTRAINT businesses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cards cards_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cards
+    ADD CONSTRAINT cards_number_key UNIQUE (number);
+
+
+--
+-- Name: cards cards_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cards
+    ADD CONSTRAINT cards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: companies companies_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_name_key UNIQUE (name);
+
+
+--
+-- Name: companies companies_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: employees employees_cpf_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_cpf_key UNIQUE (cpf);
+
+
+--
+-- Name: employees employees_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_email_key UNIQUE (email);
+
+
+--
+-- Name: employees employees_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: recharges recharges_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.recharges
+    ADD CONSTRAINT recharges_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cards cards_employeeId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cards
+    ADD CONSTRAINT "cards_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES public.employees(id);
+
+
+--
+-- Name: cards cards_originalCardId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.cards
+    ADD CONSTRAINT "cards_originalCardId_fkey" FOREIGN KEY ("originalCardId") REFERENCES public.cards(id);
+
+
+--
+-- Name: employees employees_companyId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT "employees_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES public.companies(id);
+
+
+--
+-- Name: payments payments_businessId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT "payments_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES public.businesses(id);
+
+
+--
+-- Name: payments payments_cardId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payments
+    ADD CONSTRAINT "payments_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES public.cards(id);
+
+
+--
+-- Name: recharges recharges_cardId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.recharges
+    ADD CONSTRAINT "recharges_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES public.cards(id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
