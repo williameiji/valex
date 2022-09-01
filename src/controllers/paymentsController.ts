@@ -14,3 +14,19 @@ export async function cardPayments(req: Request, res: Response) {
 
 	res.status(201).send("Pagamento efetuado.");
 }
+
+export async function cardOnlinePayments(req: Request, res: Response) {
+	const { id } = req.params;
+	const data = req.body;
+
+	await paymentsServices.cardOnlinePayments(
+		Number(id),
+		data.cardNumber,
+		data.cvc,
+		data.name,
+		data.expeditionDate,
+		Number(data.value)
+	);
+
+	res.status(201).send("Pagamento efetuado.");
+}
