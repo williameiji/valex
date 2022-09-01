@@ -105,7 +105,7 @@ export async function activateCard(
 	await cardRepository.update(id, { password });
 }
 
-function checkExpirationDate(expirationDate: string) {
+export function checkExpirationDate(expirationDate: string) {
 	const cardDate = expirationDate.split("/");
 	const date = new Date();
 	const year = date.getFullYear();
