@@ -52,35 +52,10 @@ export async function newCard(
 	});
 }
 
-async function cardName(name: string) {
-	const separateName = name.split(" ").filter((elem) => elem.length >= 3);
-
-	const nameForCard = separateName
-		.map((elem: string, index: number, array: []) => {
-			if (index !== 0 && index !== array.length - 1) {
-				return elem.slice(0, 1);
-			} else {
-				return elem;
-			}
-		})
-		.join(" ")
-		.toUpperCase();
-
-	return nameForCard;
-}
-
-async function expireDate() {
-	const expireDate = new Date();
-	const year = String(expireDate.getFullYear() + 5);
-	const month = (expireDate.getMonth() + 1).toString().padStart(2, "0");
-
-	return `${month}/${year.slice(-2)}`;
-}
-
 export async function activateCard(
 	id: number,
 	newPassword: string,
-	code: string
+	cvc: string
 ) {
 	const cryptr = new Cryptr(process.env.SECRET);
 
@@ -100,9 +75,7 @@ export async function activateCard(
 	if (card.password)
 		throw { code: "BadRequest", message: "Cartão já foi ativado." };
 
-	const cvc = cryptr.decrypt(card.securityCode);
-
-	if (cvc !== code) throw { code: "Anauthorized", message: "CVC incorreto." };
+	await decodeCvc(card.securityCode, cvc);
 
 	if (newPassword.length !== 4)
 		throw { code: "WrongType", message: "A senha deve conter 4 digitos." };
@@ -110,25 +83,6 @@ export async function activateCard(
 	const password = cryptr.encrypt(newPassword);
 
 	await cardRepository.update(id, { password });
-}
-
-export function checkExpirationDate(expirationDate: string) {
-	const cardDate = expirationDate.split("/");
-	const date = new Date();
-	const year = date.getFullYear();
-	const month = date.getMonth();
-	const actualDate = new Date(year, month);
-
-	const expirationDateFromCard = new Date(
-		Number(`20${cardDate[1]}`),
-		Number(cardDate[0])
-	);
-
-	if (actualDate > expirationDateFromCard) {
-		return true;
-	} else {
-		return false;
-	}
 }
 
 export async function sendCards(id: number, passwords: string[]) {
@@ -186,16 +140,11 @@ export async function sendBalance(id: number) {
 }
 
 export async function blockCard(id: number, password: string) {
-	const cryptr = new Cryptr(process.env.SECRET);
-
 	const card = await cardRepository.findById(id);
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
-	const decodedPassword = cryptr.decrypt(card.password);
-
-	if (decodedPassword !== password)
-		throw { code: "Anauthorized", message: "Senha incorreta." };
+	await decodePassword(card.password, password);
 
 	if (checkExpirationDate(card.expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
@@ -207,16 +156,11 @@ export async function blockCard(id: number, password: string) {
 }
 
 export async function unlockCard(id: number, password: string) {
-	const cryptr = new Cryptr(process.env.SECRET);
-
 	const card = await cardRepository.findById(id);
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
-	const decodedPassword = cryptr.decrypt(card.password);
-
-	if (decodedPassword !== password)
-		throw { code: "Anauthorized", message: "Senha incorreta." };
+	await decodePassword(card.password, password);
 
 	if (checkExpirationDate(card.expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
@@ -234,10 +178,7 @@ export async function newVirtualCard(id: number, password: string) {
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
 
-	const decodedPassword = cryptr.decrypt(card.password);
-
-	if (decodedPassword !== password)
-		throw { code: "Anauthorized", message: "Senha incorreta" };
+	await decodePassword(card.password, password);
 
 	const expirationDate = await expireDate();
 	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
@@ -258,14 +199,9 @@ export async function newVirtualCard(id: number, password: string) {
 }
 
 export async function deleteVirtualCard(id: number, password: string) {
-	const cryptr = new Cryptr(process.env.SECRET);
-
 	const card = await cardRepository.findById(id);
 
-	const decodedPassword = cryptr.decrypt(card.password);
-
-	if (decodedPassword !== password)
-		throw { code: "Anauthorized", message: "Senha incorreta" };
+	await decodePassword(card.password, password);
 
 	if (!card.isVirtual)
 		throw {
@@ -274,4 +210,66 @@ export async function deleteVirtualCard(id: number, password: string) {
 		};
 
 	await cardRepository.remove(id);
+}
+
+export function checkExpirationDate(expirationDate: string) {
+	const cardDate = expirationDate.split("/");
+	const date = new Date();
+	const year = date.getFullYear();
+	const month = date.getMonth();
+	const actualDate = new Date(year, month);
+
+	const expirationDateFromCard = new Date(
+		Number(`20${cardDate[1]}`),
+		Number(cardDate[0])
+	);
+
+	if (actualDate > expirationDateFromCard) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+async function cardName(name: string) {
+	const separateName = name.split(" ").filter((elem) => elem.length >= 3);
+
+	const nameForCard = separateName
+		.map((elem: string, index: number, array: []) => {
+			if (index !== 0 && index !== array.length - 1) {
+				return elem.slice(0, 1);
+			} else {
+				return elem;
+			}
+		})
+		.join(" ")
+		.toUpperCase();
+
+	return nameForCard;
+}
+
+async function expireDate() {
+	const expireDate = new Date();
+	const year = String(expireDate.getFullYear() + 5);
+	const month = (expireDate.getMonth() + 1).toString().padStart(2, "0");
+
+	return `${month}/${year.slice(-2)}`;
+}
+
+export async function decodePassword(cardPassword: string, password: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const decodedPassword = cryptr.decrypt(cardPassword);
+
+	if (decodedPassword !== password)
+		throw { code: "Anauthorized", message: "Senha incorreta" };
+}
+
+export async function decodeCvc(cardCvc: string, cvc: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const decodedCvc = cryptr.decrypt(cardCvc);
+
+	if (decodedCvc !== cvc)
+		throw { code: "Anauthorized", message: "CVC incorreto." };
 }

@@ -3,7 +3,7 @@ import * as rechargeRepository from "../repositories/rechargeRepository.js";
 import * as paymentRepository from "../repositories/paymentRepository.js";
 import * as businessRepository from "../repositories/businessRepository.js";
 import { checkExpirationDate } from "./cardsServices.js";
-import { sendBalance } from "./cardsServices.js";
+import { sendBalance, decodePassword, decodeCvc } from "./cardsServices.js";
 import Cryptr from "cryptr";
 import dotenv from "dotenv";
 
@@ -15,8 +15,6 @@ export async function cardPayments(
 	passwordCard: string,
 	value: number
 ) {
-	const cryptr = new Cryptr(process.env.SECRET);
-
 	const card = await cardRepository.findById(idCard);
 
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
@@ -24,15 +22,12 @@ export async function cardPayments(
 	if (card.isVirtual)
 		throw {
 			code: "Anauthorized",
-			message: "Cartões virtuais não podem ser usados nesse pagemento!",
+			message: "Cartões virtuais não podem ser usados nesse pagamento!",
 		};
 
 	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo!" };
 
-	const decodedPassword = cryptr.decrypt(card.password);
-
-	if (decodedPassword !== passwordCard)
-		throw { code: "Anauthorized", message: "Senha incorreta." };
+	await decodePassword(card.password, passwordCard);
 
 	if (checkExpirationDate(card.expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
@@ -72,8 +67,6 @@ export async function cardOnlinePayments(
 	expeditionDate: string,
 	value: number
 ) {
-	const cryptr = new Cryptr(process.env.SECRET);
-
 	const card = await cardRepository.findByCardDetails(
 		cardNumber,
 		name,
@@ -84,11 +77,7 @@ export async function cardOnlinePayments(
 
 	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo!" };
 
-	const decodedCvc = cryptr.decrypt(card.securityCode);
-	console.log(decodedCvc);
-
-	if (decodedCvc !== cvc)
-		throw { code: "Anauthorized", message: "Dados incorretos" };
+	await decodeCvc(card.securityCode, cvc);
 
 	if (checkExpirationDate(card.expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
