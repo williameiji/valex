@@ -72,7 +72,7 @@ async function cardName(name: string) {
 async function expireDate() {
 	const expireDate = new Date();
 	const year = String(expireDate.getFullYear() + 5);
-	const month = expireDate.getMonth();
+	const month = (expireDate.getMonth() + 1).toString().padStart(2, "0");
 
 	return `${month}/${year.slice(-2)}`;
 }
@@ -218,4 +218,53 @@ export async function unlockCard(id: number, password: string) {
 		throw { code: "BadRequest", message: "Cartão já está desbloqueado." };
 
 	await cardRepository.update(id, { isBlocked: false });
+}
+
+export async function newVirtualCard(id: number, password: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const card = await cardRepository.findById(id);
+
+	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+
+	const decodedPassword = cryptr.decrypt(card.password);
+
+	if (decodedPassword !== password)
+		throw { code: "Anauthorized", message: "Senha incorreta" };
+
+	const expirationDate = await expireDate();
+	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
+	const number = faker.finance.creditCardNumber("master");
+
+	await cardRepository.insert({
+		employeeId: card.employeeId,
+		number: number,
+		cardholderName: card.cardholderName,
+		securityCode: securityCode,
+		expirationDate: expirationDate,
+		password: card.password,
+		isVirtual: true,
+		originalCardId: card.id,
+		isBlocked: false,
+		type: card.type,
+	});
+}
+
+export async function deleteVirtualCard(id: number, password: string) {
+	const cryptr = new Cryptr(process.env.SECRET);
+
+	const card = await cardRepository.findById(id);
+
+	const decodedPassword = cryptr.decrypt(card.password);
+
+	if (decodedPassword !== password)
+		throw { code: "Anauthorized", message: "Senha incorreta" };
+
+	if (!card.isVirtual)
+		throw {
+			code: "BadRequest",
+			message: "Somente cartões virtuais podem ser excluídos!",
+		};
+
+	await cardRepository.remove(id);
 }

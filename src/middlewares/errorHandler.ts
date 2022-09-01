@@ -12,5 +12,7 @@ export default async function errorHandler(
 	if (error.code === "NotFound") return res.status(404).send(error.message);
 	if (error.code === "Conflict") return res.status(409).send(error.message);
 
+	console.log(error);
+
 	return res.sendStatus(500);
 }

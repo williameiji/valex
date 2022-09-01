@@ -9,6 +9,8 @@ import {
 	sendBalance,
 	blockCard,
 	unlockCard,
+	newVirtualCard,
+	deleteVirtualCard,
 } from "../controllers/cardsControlles.js";
 
 const cardsRouter = Router();
@@ -19,5 +21,7 @@ cardsRouter.post("/cards/:id", sendCards);
 cardsRouter.get("/cards/:id", sendBalance);
 cardsRouter.put("/cards/block", blockCard);
 cardsRouter.put("/cards/unlock", unlockCard);
+cardsRouter.post("/virtualcards", newVirtualCard);
+cardsRouter.delete("/virtualcards/:id", deleteVirtualCard);
 
 export default cardsRouter;
