@@ -14,16 +14,174 @@ export async function newCard(
 	type: cardRepository.TransactionTypes,
 	employeeId: number
 ) {
+	await isApiKeyValid(apiKey);
+
+	const employeeDate = await isEmployeeRegistered(employeeId);
+
+	await checkCardsOfEmployee(type, employeeId);
+
+	const cardholderName = await cardName(employeeDate.fullName);
+	const number = faker.finance.creditCardNumber("63[7-9]#-####-####-###L");
+
+	await populateNewCard(
+		employeeId,
+		number,
+		cardholderName,
+		type,
+		null,
+		false,
+		false,
+		null
+	);
+}
+
+export async function activateCard(
+	id: number,
+	newPassword: string,
+	cvc: string
+) {
 	const cryptr = new Cryptr(process.env.SECRET);
+
+	const card = await getCardInformation(id);
+
+	isCardRegistered(card);
+
+	isCardExpired(card.expirationDate);
+
+	if (card.isVirtual)
+		throw {
+			code: "BadRequest",
+			message: "Cartões virtuais não podem ser ativados.",
+		};
+
+	isCardActive(card.password);
+
+	await checkDecodeCvc(card.securityCode, cvc);
+
+	checkLengthOfPassword(newPassword);
+
+	const password = cryptr.encrypt(newPassword);
+
+	await updateCardInformations(id, { password });
+}
+
+export async function sendCards(id: number, passwords: string[]) {
+	const cards = await cardRepository.findByEmploeeId(id);
+
+	const sendCardsInformations = await getAllCardInformationFromEmploee(
+		cards,
+		passwords
+	);
+
+	return { cards: sendCardsInformations };
+}
+
+export async function sendBalance(id: number) {
+	const card = await getCardInformation(id);
+
+	isCardRegistered(card);
+
+	const { totalTransactions, transactions } = await calculateTotalTransactions(
+		id
+	);
+
+	const { totalRecharges, recharges } = await calculateTotalRecharges(id);
+
+	return {
+		balance: totalRecharges - totalTransactions,
+		transactions,
+		recharges,
+	};
+}
+
+export async function blockCard(id: number, password: string) {
+	const card = await getCardInformation(id);
+
+	isCardRegistered(card);
+
+	await checkDecodePassword(card.password, password);
+
+	isCardExpired(card.expirationDate);
+
+	if (card.isBlocked)
+		throw { code: "BadRequest", message: "Cartão já bloqueado." };
+
+	await updateCardInformations(id, { isBlocked: true });
+}
+
+export async function unlockCard(id: number, password: string) {
+	const card = await getCardInformation(id);
+
+	isCardRegistered(card);
+
+	await checkDecodePassword(card.password, password);
+
+	isCardExpired(card.expirationDate);
+
+	if (!card.isBlocked)
+		throw { code: "BadRequest", message: "Cartão já está desbloqueado." };
+
+	await updateCardInformations(id, { isBlocked: false });
+}
+
+export async function newVirtualCard(id: number, password: string) {
+	const card = await getCardInformation(id);
+
+	isCardRegistered(card);
+
+	await checkDecodePassword(card.password, password);
+
+	const cardNumber = faker.finance.creditCardNumber("master");
+
+	await populateNewCard(
+		card.employeeId,
+		cardNumber,
+		card.cardholderName,
+		card.type,
+		card.password,
+		true,
+		false,
+		card.id
+	);
+}
+
+export async function deleteVirtualCard(id: number, password: string) {
+	const card = await getCardInformation(id);
+
+	await checkDecodePassword(card.password, password);
+
+	if (!card.isVirtual)
+		throw {
+			code: "BadRequest",
+			message: "Somente cartões virtuais podem ser excluídos!",
+		};
+
+	await removeVirtualCard(id);
+}
+
+export async function isApiKeyValid(apiKey: string) {
 	const isKeyValid = await findByApiKey(apiKey);
 
 	if (!isKeyValid) throw { code: "Anauthorized", message: "Api key inválida." };
+}
 
+export function isCardBlocked(isBlocked: boolean) {
+	if (isBlocked) throw { code: "BadRequest", message: "Cartão bloqueado." };
+}
+
+async function isEmployeeRegistered(employeeId: number) {
 	const isEmployeeRegistred = await findById(employeeId);
 
 	if (!isEmployeeRegistred)
 		throw { code: "NotFound", message: "Empregado não encontrado" };
 
+	return isEmployeeRegistred;
+}
+
+async function checkCardsOfEmployee(
+	type: cardRepository.TransactionTypes,
+	employeeId: number
+) {
 	const cardsOfEmployee = await cardRepository.findByTypeAndEmployeeId(
 		type,
 		employeeId
@@ -34,64 +192,32 @@ export async function newCard(
 			code: "Conflict",
 			message: "Cartão já registrado para esse usuário.",
 		};
-
-	const cardholderName = await cardName(isEmployeeRegistred.fullName);
-	const expirationDate = await expireDate();
-	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
-	const number = faker.finance.creditCardNumber("63[7-9]#-####-####-###L");
-
-	await cardRepository.insert({
-		employeeId,
-		number,
-		cardholderName,
-		securityCode,
-		expirationDate,
-		isVirtual: false,
-		isBlocked: false,
-		type,
-	});
 }
 
-export async function activateCard(
-	id: number,
-	newPassword: string,
-	cvc: string
-) {
-	const cryptr = new Cryptr(process.env.SECRET);
+export function isCardActive(password: string) {
+	if (password) throw { code: "BadRequest", message: "Cartão já foi ativado." };
+}
 
-	const card = await cardRepository.findById(id);
+export function isCardInactive(password: string) {
+	if (!password) throw { code: "BadRequest", message: "Cartão inativo!" };
+}
 
-	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
-
-	if (checkExpirationDate(card.expirationDate))
-		throw { code: "BadRequest", message: "Cartão expirado." };
-
-	if (card.isVirtual)
-		throw {
-			code: "BadRequest",
-			message: "Cartões virtuais não podem ser ativados.",
-		};
-
-	if (card.password)
-		throw { code: "BadRequest", message: "Cartão já foi ativado." };
-
-	await decodeCvc(card.securityCode, cvc);
-
-	if (newPassword.length !== 4)
+function checkLengthOfPassword(password: string) {
+	if (password.length !== 4)
 		throw { code: "WrongType", message: "A senha deve conter 4 digitos." };
-
-	const password = cryptr.encrypt(newPassword);
-
-	await cardRepository.update(id, { password });
 }
 
-export async function sendCards(id: number, passwords: string[]) {
-	const cryptr = new Cryptr(process.env.SECRET);
-	const cards = await cardRepository.findByEmploeeId(id);
+async function updateCardInformations(id: number, item: object) {
+	await cardRepository.update(id, item);
+}
 
-	if (!cards.length) return {};
+async function getAllCardInformationFromEmploee(
+	cards: any,
+	passwords: string[]
+) {
+	cards.map((elem) => {
+		const cryptr = new Cryptr(process.env.SECRET);
 
-	const sendInformations = cards.map((elem, index) => {
 		const decodedPassword = cryptr.decrypt(elem.password);
 
 		if (passwords.some((elem) => elem == decodedPassword)) {
@@ -107,15 +233,9 @@ export async function sendCards(id: number, passwords: string[]) {
 			return "Senha/Cartão inválidos";
 		}
 	});
-
-	return { cards: sendInformations };
 }
 
-export async function sendBalance(id: number) {
-	const card = await cardRepository.findById(id);
-
-	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
-
+async function calculateTotalTransactions(id: number) {
 	const transactions = await paymentRepository.findByCardId(id);
 
 	let totalTransactions: number = 0;
@@ -124,6 +244,10 @@ export async function sendBalance(id: number) {
 		totalTransactions += balance.amount;
 	}
 
+	return { totalTransactions, transactions };
+}
+
+async function calculateTotalRecharges(id: number) {
 	const recharges = await rechargeRepository.findByCardId(id);
 
 	let totalRecharges: number = 0;
@@ -132,84 +256,50 @@ export async function sendBalance(id: number) {
 		totalRecharges += balance.amount;
 	}
 
-	return {
-		balance: totalRecharges - totalTransactions,
-		transactions,
-		recharges,
-	};
+	return { totalRecharges, recharges };
 }
 
-export async function blockCard(id: number, password: string) {
-	const card = await cardRepository.findById(id);
+async function removeVirtualCard(id: number) {
+	await cardRepository.remove(id);
+}
 
+export async function getCardInformation(id: number) {
+	return await cardRepository.findById(id);
+}
+
+export function isCardRegistered(card: object) {
 	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
-
-	await decodePassword(card.password, password);
-
-	if (checkExpirationDate(card.expirationDate))
-		throw { code: "BadRequest", message: "Cartão expirado." };
-
-	if (card.isBlocked)
-		throw { code: "BadRequest", message: "Cartão já bloqueado." };
-
-	await cardRepository.update(id, { isBlocked: true });
 }
 
-export async function unlockCard(id: number, password: string) {
-	const card = await cardRepository.findById(id);
-
-	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
-
-	await decodePassword(card.password, password);
-
-	if (checkExpirationDate(card.expirationDate))
+export function isCardExpired(expirationDate: string) {
+	if (checkExpirationDate(expirationDate))
 		throw { code: "BadRequest", message: "Cartão expirado." };
-
-	if (!card.isBlocked)
-		throw { code: "BadRequest", message: "Cartão já está desbloqueado." };
-
-	await cardRepository.update(id, { isBlocked: false });
 }
 
-export async function newVirtualCard(id: number, password: string) {
+async function populateNewCard(
+	employeeId: number,
+	number: string,
+	cardholderName: string,
+	type: cardRepository.TransactionTypes,
+	password?: string,
+	isVirtual?: boolean,
+	isBlocked?: boolean,
+	originalCardId?: number
+) {
 	const cryptr = new Cryptr(process.env.SECRET);
 
-	const card = await cardRepository.findById(id);
-
-	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
-
-	await decodePassword(card.password, password);
-
-	const expirationDate = await expireDate();
-	const securityCode = cryptr.encrypt(faker.finance.creditCardCVV());
-	const number = faker.finance.creditCardNumber("master");
-
 	await cardRepository.insert({
-		employeeId: card.employeeId,
-		number: number,
-		cardholderName: card.cardholderName,
-		securityCode: securityCode,
-		expirationDate: expirationDate,
-		password: card.password,
-		isVirtual: true,
-		originalCardId: card.id,
-		isBlocked: false,
-		type: card.type,
+		employeeId,
+		number,
+		cardholderName,
+		securityCode: cryptr.encrypt(faker.finance.creditCardCVV()),
+		expirationDate: await expireDate(),
+		password,
+		isVirtual,
+		originalCardId,
+		isBlocked,
+		type,
 	});
-}
-
-export async function deleteVirtualCard(id: number, password: string) {
-	const card = await cardRepository.findById(id);
-
-	await decodePassword(card.password, password);
-
-	if (!card.isVirtual)
-		throw {
-			code: "BadRequest",
-			message: "Somente cartões virtuais podem ser excluídos!",
-		};
-
-	await cardRepository.remove(id);
 }
 
 export function checkExpirationDate(expirationDate: string) {
@@ -256,7 +346,10 @@ async function expireDate() {
 	return `${month}/${year.slice(-2)}`;
 }
 
-export async function decodePassword(cardPassword: string, password: string) {
+export async function checkDecodePassword(
+	cardPassword: string,
+	password: string
+) {
 	const cryptr = new Cryptr(process.env.SECRET);
 
 	const decodedPassword = cryptr.decrypt(cardPassword);
@@ -265,7 +358,7 @@ export async function decodePassword(cardPassword: string, password: string) {
 		throw { code: "Anauthorized", message: "Senha incorreta" };
 }
 
-export async function decodeCvc(cardCvc: string, cvc: string) {
+export async function checkDecodeCvc(cardCvc: string, cvc: string) {
 	const cryptr = new Cryptr(process.env.SECRET);
 
 	const decodedCvc = cryptr.decrypt(cardCvc);

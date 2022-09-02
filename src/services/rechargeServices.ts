@@ -1,14 +1,12 @@
-import * as cardRepository from "../repositories/cardRepository.js";
-import { findByApiKey } from "../repositories/companyRepository.js";
 import * as rechargeRepository from "../repositories/rechargeRepository.js";
-import { checkExpirationDate } from "./cardsServices.js";
+import * as cardsServices from "./cardsServices.js";
 
 export async function rechargeCard(id: number, value: number, apiKey: string) {
-	const isKeyValid = await findByApiKey(apiKey);
+	await cardsServices.isApiKeyValid(apiKey);
 
-	if (!isKeyValid) throw { code: "Anauthorized", message: "Api key inválida." };
+	const card = await cardsServices.getCardInformation(id);
 
-	const card = await cardRepository.findById(id);
+	cardsServices.isCardRegistered(card);
 
 	if (card.isVirtual)
 		throw {
@@ -16,12 +14,9 @@ export async function rechargeCard(id: number, value: number, apiKey: string) {
 			message: "Cartões virtuais não podem ser recarregados!",
 		};
 
-	if (!card) throw { code: "NotFound", message: "Cartão não encontrado." };
+	cardsServices.isCardInactive(card.password);
 
-	if (!card.password) throw { code: "BadRequest", message: "Cartão inativo." };
-
-	if (checkExpirationDate(card.expirationDate))
-		throw { code: "BadRequest", message: "Cartão expirado." };
+	cardsServices.isCardExpired(card.expirationDate);
 
 	await rechargeRepository.insert({ cardId: id, amount: value });
 }
