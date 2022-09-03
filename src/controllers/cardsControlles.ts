@@ -21,9 +21,10 @@ export async function activateCard(req: Request, res: Response) {
 
 export async function sendCards(req: Request, res: Response) {
 	const { id } = req.params;
-	const { passwords } = req.body;
 
-	const cards = await cardServices.sendCards(Number(id), passwords);
+	const passwordsList = JSON.stringify(req.headers["data"]);
+
+	const cards = await cardServices.sendCards(Number(id), passwordsList);
 
 	res.status(200).send(cards);
 }

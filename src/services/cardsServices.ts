@@ -61,12 +61,15 @@ export async function activateCard(
 	await updateCardInformations(id, { password });
 }
 
-export async function sendCards(id: number, passwords: string[]) {
+export async function sendCards(id: number, passwords: string) {
+	const stringToArray = JSON.parse(passwords);
+	const passwordsList = JSON.parse(stringToArray);
+
 	const cards = await cardRepository.findByEmploeeId(id);
 
 	const sendCardsInformations = await getAllCardInformationFromEmploee(
 		cards,
-		passwords
+		passwordsList
 	);
 
 	return { cards: sendCardsInformations };
@@ -332,14 +335,14 @@ export function checkExpirationDate(expirationDate: string) {
 
 async function getAllCardInformationFromEmploee(
 	cards: any,
-	passwords: string[]
+	passwords: number[]
 ) {
-	cards.map((elem: any) => {
+	const data = cards.map((elem: any, index: number) => {
 		const cryptr = new Cryptr(process.env.SECRET);
 
 		const decodedPassword = cryptr.decrypt(elem.password);
 
-		if (passwords.some((elem) => elem == decodedPassword)) {
+		if (String(passwords[index]) === decodedPassword) {
 			const numberWithoutDash = elem.number.split("-").join(" ");
 
 			return {
@@ -352,6 +355,8 @@ async function getAllCardInformationFromEmploee(
 			return "Senha/Cartão inválidos";
 		}
 	});
+
+	return data;
 }
 
 async function cardName(name: string) {
