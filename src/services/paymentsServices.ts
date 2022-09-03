@@ -16,11 +16,7 @@ export async function cardPayments(
 
 	cardsServices.isCardRegistered(card);
 
-	if (card.isVirtual)
-		throw {
-			code: "Anauthorized",
-			message: "Cartões virtuais não podem ser usados nesse pagamento!",
-		};
+	cardsServices.checkCardType(card.isVirtual);
 
 	cardsServices.isCardInactive(card.password);
 
@@ -79,6 +75,8 @@ export async function cardOnlinePayments(
 	);
 }
 
+//api
+
 async function getCardInformationByDetails(
 	cardNumber: string,
 	name: string,
@@ -89,22 +87,6 @@ async function getCardInformationByDetails(
 		name,
 		expeditionDate
 	);
-}
-
-async function calculateTotalBalance(
-	isVirtual: boolean,
-	originalCardId: number,
-	cardId: number
-) {
-	let totalBalance: number;
-
-	if (isVirtual) {
-		const { balance } = await cardsServices.sendBalance(originalCardId);
-		return (totalBalance = balance);
-	} else {
-		const { balance } = await cardsServices.sendBalance(cardId);
-		return (totalBalance = balance);
-	}
 }
 
 async function populatePayments(
@@ -146,4 +128,22 @@ async function checkStablishmentInformation(
 			code: "Anauthorized",
 			message: "O tipo de estabelecimento não é o mesmo do tipo do cartão!",
 		};
+}
+
+//api
+
+async function calculateTotalBalance(
+	isVirtual: boolean,
+	originalCardId: number,
+	cardId: number
+) {
+	let totalBalance: number;
+
+	if (isVirtual) {
+		const { balance } = await cardsServices.sendBalance(originalCardId);
+		return (totalBalance = balance);
+	} else {
+		const { balance } = await cardsServices.sendBalance(cardId);
+		return (totalBalance = balance);
+	}
 }

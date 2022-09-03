@@ -8,15 +8,15 @@ export async function rechargeCard(id: number, value: number, apiKey: string) {
 
 	cardsServices.isCardRegistered(card);
 
-	if (card.isVirtual)
-		throw {
-			code: "BadRequest",
-			message: "Cartões virtuais não podem ser recarregados!",
-		};
+	cardsServices.checkCardType(card.isVirtual);
 
 	cardsServices.isCardInactive(card.password);
 
 	cardsServices.isCardExpired(card.expirationDate);
 
-	await rechargeRepository.insert({ cardId: id, amount: value });
+	await populateRecharge(id, value);
+}
+
+async function populateRecharge(id: number, value: number) {
+	rechargeRepository.insert({ cardId: id, amount: value });
 }
